@@ -36,5 +36,6 @@
     "typecheck": "tsc --noEmit",
     "check:bundle": "expo export --platform android --output-dir dist"
   },
-  "private": true
+  "private": true,
+  "packageManager": "pnpm@12.5.1"
 }
