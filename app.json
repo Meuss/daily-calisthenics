@@ -21,7 +21,8 @@
       "versionCode": 1
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "./tooling/withReleaseSigning"
     ],
     "scheme": "calisthenics",
     "platforms": [
