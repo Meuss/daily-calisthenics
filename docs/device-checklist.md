@@ -32,3 +32,8 @@ Run through this on a real Android phone (Expo Go or an installed APK). There is
 
 ## Screenshots for the README
 - [ ] Take portrait screenshots of Today, a Session (an Exercise with its illustration) and Progress; save them as `docs/screenshots/today.png`, `session.png`, `progress.png`.
+
+## Release APK
+- [ ] The launcher shows the green push-up icon; the splash is dark.
+- [ ] Installing a newer release over an older one keeps all history.
+- [ ] A Reminder arrives with the small green/white figure in the status bar.

@@ -22,15 +22,15 @@ Daily Calisthenics is a small, free Android app that tells you exactly what to d
 
 ## Install
 
-Daily Calisthenics isn't on the Play Store. To try it today:
+1. On your Android phone, open the [latest release](https://github.com/Meuss/daily-calisthenics/releases/latest) and download `daily-calisthenics-<version>.apk`.
+2. Open the downloaded file. Android will ask you to allow installs from your browser or Files app — allow it for this install.
+3. If Play Protect warns that it doesn't recognise the app, choose **Install anyway** (it isn't on the Play Store).
 
-1. Install **Expo Go for SDK 57** on your Android phone (linked from https://expo.dev/go).
-2. On a computer with Node.js and pnpm: `git clone https://github.com/Meuss/daily-calisthenics && cd daily-calisthenics && pnpm install && pnpm start`
-3. Scan the QR code with Expo Go (same Wi-Fi, or `pnpm start --tunnel`).
+Updates: install the newer APK from Releases the same way; your history stays on the phone. Export a backup from Settings first if you like.
 
-Expo Go can't schedule notifications, so morning Reminders only work in the installed app.
+### Try it without installing
 
-A downloadable APK on the [Releases](https://github.com/Meuss/daily-calisthenics/releases) page is planned.
+On a computer with Node.js and pnpm: `git clone https://github.com/Meuss/daily-calisthenics && cd daily-calisthenics && pnpm install && pnpm start`, then scan the QR code with Expo Go for SDK 57 ([expo.dev/go](https://expo.dev/go)). Expo Go can't schedule notifications, so morning Reminders only work in the installed app.
 
 ## Development
 
