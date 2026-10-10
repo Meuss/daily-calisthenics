@@ -1,0 +1,94 @@
+name: Release APK
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+      RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+      RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+      RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+      NDK_VERSION: 27.1.12297006
+      BUILD_TOOLS: 36.0.0
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Refuse to build without the signing key
+        run: |
+          for name in KEYSTORE_BASE64 RELEASE_STORE_PASSWORD RELEASE_KEY_ALIAS RELEASE_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then echo "::error::Missing signing secret for $name"; exit 1; fi
+          done
+
+      - name: Version from tag
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            node tooling/version.mjs "$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+          else
+            echo "APP_VERSION=0.0.${GITHUB_RUN_NUMBER}-test" >> "$GITHUB_ENV"
+          fi
+
+      - uses: pnpm/setup@v3
+        with:
+          version: 12.5.1
+          runtime: node@24
+          cache: true
+          install: false
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Install the Android NDK
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null
+          "$SDKMANAGER" "ndk;$NDK_VERSION" > /dev/null
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm typecheck
+
+      - name: Generate the Android project
+        run: pnpm expo prebuild --platform android --no-install
+
+      - name: Build the signed APK
+        run: |
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          export RELEASE_STORE_FILE="$RUNNER_TEMP/release.keystore"
+          cd android
+          ./gradlew assembleRelease --no-daemon
+          rm -f "$RELEASE_STORE_FILE"
+
+      - name: Check it is signed with the release key
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          "$ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner" verify --print-certs "$APK" | tee certs.txt
+          grep -q "CN=Daily Calisthenics" certs.txt || { echo "::error::APK is not signed with the release key"; exit 1; }
+          mv "$APK" "daily-calisthenics-$APP_VERSION.apk"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: daily-calisthenics-apk
+          path: daily-calisthenics-*.apk
+
+      - name: Publish the GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" daily-calisthenics-*.apk --title "Daily Calisthenics $APP_VERSION" --generate-notes
