@@ -4,7 +4,11 @@
 
 Daily Calisthenics is a small, free Android app that tells you exactly what to do each morning: a short guided circuit with simple illustrations, reps or a timer for every move, and a Streak that forgives the occasional bad day.
 
-<!-- screenshots -->
+<p align="center">
+  <img src="docs/screenshots/today.png" alt="Today screen" width="240">
+  <img src="docs/screenshots/session.png" alt="A Session in progress" width="240">
+  <img src="docs/screenshots/progress.png" alt="Progress screen" width="240">
+</p>
 
 ## Features
 
@@ -23,6 +27,8 @@ Daily Calisthenics isn't on the Play Store. To try it today:
 1. Install **Expo Go for SDK 57** on your Android phone (linked from https://expo.dev/go).
 2. On a computer with Node.js and pnpm: `git clone https://github.com/Meuss/daily-calisthenics && cd daily-calisthenics && pnpm install && pnpm start`
 3. Scan the QR code with Expo Go (same Wi-Fi, or `pnpm start --tunnel`).
+
+Expo Go can't schedule notifications, so morning Reminders only work in the installed app.
 
 A downloadable APK on the [Releases](https://github.com/Meuss/daily-calisthenics/releases) page is planned.
 
