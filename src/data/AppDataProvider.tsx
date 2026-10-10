@@ -1,0 +1,90 @@
+import { openDatabaseSync } from 'expo-sqlite';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { AppState } from 'react-native';
+import { toLocalDate, type AppSettings, type DomainEvent, type LocalDate } from '../domain';
+import { settingsChangeEvents } from './commands';
+import type { EventStore } from './eventStore';
+import type { KeyValueStore } from './kvStore';
+import { loadSettings, saveSettings } from './settingsStore';
+import { createSqliteEventStore } from './sqliteEventStore';
+import { sqliteKeyValueStore } from './sqliteKv';
+
+export type AppData = {
+  events: DomainEvent[];
+  settings: AppSettings;
+  today: LocalDate;
+  kv: KeyValueStore;
+  append: (events: DomainEvent[]) => void;
+  updateSettings: (next: AppSettings) => void;
+  replaceAll: (events: DomainEvent[], settings: AppSettings) => void;
+};
+
+const AppDataContext = createContext<AppData | null>(null);
+
+let stores: { events: EventStore; kv: KeyValueStore } | undefined;
+
+function getStores() {
+  stores ??= { events: createSqliteEventStore(openDatabaseSync('calisthenics.db')), kv: sqliteKeyValueStore };
+  return stores;
+}
+
+export function AppDataProvider({ children }: { children: ReactNode }) {
+  const { events: eventStore, kv } = getStores();
+  const [events, setEvents] = useState(() => eventStore.all());
+  const [settings, setSettings] = useState(() => loadSettings(kv));
+  const [today, setToday] = useState(() => toLocalDate(new Date()));
+
+  // "Today" rolls over at local midnight, and when the app comes back to the foreground.
+  useEffect(() => {
+    const refresh = () => setToday(toLocalDate(new Date()));
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refresh();
+    });
+    const timer = setInterval(refresh, 60_000);
+    return () => {
+      subscription.remove();
+      clearInterval(timer);
+    };
+  }, []);
+
+  const append = useCallback(
+    (newEvents: DomainEvent[]) => {
+      if (newEvents.length === 0) return;
+      eventStore.append(newEvents);
+      setEvents(eventStore.all());
+    },
+    [eventStore],
+  );
+
+  const updateSettings = useCallback(
+    (next: AppSettings) => {
+      append(settingsChangeEvents(settings, next, new Date()));
+      saveSettings(kv, next);
+      setSettings(next);
+    },
+    [append, kv, settings],
+  );
+
+  const replaceAll = useCallback(
+    (nextEvents: DomainEvent[], nextSettings: AppSettings) => {
+      eventStore.replaceAll(nextEvents);
+      saveSettings(kv, nextSettings);
+      setEvents(eventStore.all());
+      setSettings(nextSettings);
+    },
+    [eventStore, kv],
+  );
+
+  const value = useMemo(
+    () => ({ events, settings, today, kv, append, updateSettings, replaceAll }),
+    [events, settings, today, kv, append, updateSettings, replaceAll],
+  );
+
+  return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
+}
+
+export function useAppData(): AppData {
+  const value = useContext(AppDataContext);
+  if (!value) throw new Error('useAppData must be used inside AppDataProvider');
+  return value;
+}

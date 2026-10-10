@@ -1,7 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Redirect } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
 import type { ComponentProps } from 'react';
 import type { ColorValue } from 'react-native';
+import { useAppData } from '../../data/AppDataProvider';
+import { hasPlacement } from '../../data/commands';
 import { colors } from '../../ui/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -12,6 +15,9 @@ const icon = (name: IconName) =>
   };
 
 export default function TabLayout() {
+  const { events } = useAppData();
+  if (!hasPlacement(events)) return <Redirect href="/placement" />;
+
   return (
     <Tabs
       screenOptions={{
