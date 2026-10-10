@@ -17,16 +17,21 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
-      KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
-      RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
-      RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-      RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
       NDK_VERSION: 27.1.12297006
       BUILD_TOOLS: 36.0.0
+      # SHA-256 of the release certificate. Every release must match it, or it can't install over the previous one.
+      RELEASE_CERT_SHA256: cb039f175dfa9c220764e8cbcf2404f984a528e26cd74e24244f0db584d45374
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Refuse to build without the signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           for name in KEYSTORE_BASE64 RELEASE_STORE_PASSWORD RELEASE_KEY_ALIAS RELEASE_KEY_PASSWORD; do
             if [ -z "${!name}" ]; then echo "::error::Missing signing secret for $name"; exit 1; fi
@@ -68,6 +73,11 @@ jobs:
         run: pnpm expo prebuild --platform android --no-install
 
       - name: Build the signed APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
           export RELEASE_STORE_FILE="$RUNNER_TEMP/release.keystore"
@@ -77,9 +87,10 @@ jobs:
 
       - name: Check it is signed with the release key
         run: |
+          set -o pipefail
           APK=android/app/build/outputs/apk/release/app-release.apk
           "$ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner" verify --print-certs "$APK" | tee certs.txt
-          grep -q "CN=Daily Calisthenics" certs.txt || { echo "::error::APK is not signed with the release key"; exit 1; }
+          grep -q "certificate SHA-256 digest: $RELEASE_CERT_SHA256" certs.txt || { echo "::error::APK is not signed with the release certificate"; exit 1; }
           mv "$APK" "daily-calisthenics-$APP_VERSION.apk"
 
       - uses: actions/upload-artifact@v7
@@ -88,7 +99,7 @@ jobs:
           path: daily-calisthenics-*.apk
 
       - name: Publish the GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" daily-calisthenics-*.apk --title "Daily Calisthenics $APP_VERSION" --generate-notes
