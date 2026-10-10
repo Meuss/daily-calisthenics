@@ -3,7 +3,6 @@ import { PROGRESSIONS, exerciseFor } from './catalog/progressions';
 import { addDays, type LocalDate } from './dates';
 import type { DomainEvent } from './events';
 import { computeStreak } from './streak';
-import { deriveWeighIns } from './weighins';
 
 export type AchievementDef = { id: string; title: string; description: string };
 export type EarnedAchievement = { id: string; earnedOn: LocalDate };
@@ -56,12 +55,14 @@ export function earnedAchievements(events: DomainEvent[], today: LocalDate): Ear
     }
   }
 
+  // Achievements are one-off: a run counts every day a Weigh-in was ever recorded, so a later deletion can't revoke it.
+  const weighInDays = [...new Set(events.flatMap((e) => (e.type === 'weighInRecorded' ? [e.date] : [])))].sort();
   let run = 0;
   let previous: LocalDate | undefined;
-  for (const weighIn of deriveWeighIns(events)) {
-    run = previous !== undefined && addDays(previous, 1) === weighIn.date ? run + 1 : 1;
-    previous = weighIn.date;
-    for (const n of WEIGH_IN_MILESTONES) if (run >= n) earn(`weighins-${n}`, weighIn.date);
+  for (const date of weighInDays) {
+    run = previous !== undefined && addDays(previous, 1) === date ? run + 1 : 1;
+    previous = date;
+    for (const n of WEIGH_IN_MILESTONES) if (run >= n) earn(`weighins-${n}`, date);
   }
 
   return [...earned]

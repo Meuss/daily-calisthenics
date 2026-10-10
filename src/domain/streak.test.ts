@@ -91,4 +91,15 @@ describe('computeStreak', () => {
     const summary = computeStreak([weighIn('2026-09-01', 80, '2026-10-09'), session('2026-10-09')], '2026-10-09');
     expect(summary.days).toHaveLength(1);
   });
+
+  it('applies a Freeze settings change made on a Monday from the following Monday', () => {
+    const events = [
+      ...eachDay('2026-10-05', '2026-10-12').map((d) => session(d)),
+      freezePolicy('2026-10-12', { enabled: false }),
+      session('2026-10-14'),
+    ];
+    const summary = computeStreak(events, '2026-10-14');
+    expect(statusOn(summary, '2026-10-13')).toBe('frozen');
+    expect(summary.current).toBe(9);
+  });
 });

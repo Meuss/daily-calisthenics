@@ -16,12 +16,17 @@ function grant(policy: FreezePolicy, banked: number): number {
   return policy.enabled ? Math.min(policy.maxBanked, banked + policy.perWeek) : 0;
 }
 
-/** Freeze settings are snapshotted per week: changes apply from the next Monday (or immediately on the first day). */
+/**
+ * Freeze settings are snapshotted per week: a change applies from the next Monday, even when made on a Monday
+ * (that Monday's grant happened at midnight). Exception: changes made on the very first day apply immediately.
+ */
 function policyFor(policies: EventOf<'freezePolicySet'>[], date: LocalDate, firstDay: LocalDate): FreezePolicy {
   const monday = mondayOf(date);
-  const cutoff = monday < firstDay ? firstDay : monday;
+  const inFirstWeek = monday <= firstDay;
   let policy = DEFAULT_SETTINGS.freeze;
-  for (const event of policies) if (event.date <= cutoff) policy = event.policy;
+  for (const event of policies) {
+    if (inFirstWeek ? event.date <= firstDay : event.date < monday) policy = event.policy;
+  }
   return policy;
 }
 

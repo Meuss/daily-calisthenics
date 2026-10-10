@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ACHIEVEMENTS, earnedAchievements, newlyEarned } from './achievements';
 import { eachDay } from './dates';
-import { accepted, freezePolicy, placement, session, weighIn } from './testing/builders';
+import { accepted, freezePolicy, placement, session, weighIn, weighInDeleted } from './testing/builders';
 
 // Freezes off, so misses reset the Streak immediately and tests stay readable.
 const noFreezes = (date: string) => freezePolicy(date, { enabled: false });
@@ -38,6 +38,11 @@ describe('earnedAchievements', () => {
 
     const withGap = [...eachDay('2026-10-01', '2026-10-03'), ...eachDay('2026-10-05', '2026-10-08')].map((d) => weighIn(d, 80));
     expect(ids(earnedAchievements(withGap, '2026-10-08'))).not.toContain('weighins-7');
+  });
+
+  it('keeps a Weigh-in run Achievement after one of its days is deleted', () => {
+    const events = [...eachDay('2026-10-01', '2026-10-07').map((d) => weighIn(d, 80)), weighInDeleted('2026-10-04')];
+    expect(earnedOn(earnedAchievements(events, '2026-10-08'), 'weighins-7')).toBe('2026-10-07');
   });
 
   it('awards Comeback on the first Completed Day after a reset', () => {

@@ -26,6 +26,14 @@ export const AdjustmentRulesSchema = z.object({
   holdCeiling: z.number().int().min(1),
   repFloor: z.number().int().min(1),
   holdFloor: z.number().int().min(1),
+}).superRefine((rules, ctx) => {
+  // Guarantees nextLevel never goes below the floor (and so never below 1).
+  if (rules.repFloor + rules.repIncrement > rules.repCeiling) {
+    ctx.addIssue({ code: 'custom', path: ['repFloor'], message: 'Rep floor plus increment must not exceed the rep ceiling' });
+  }
+  if (rules.holdFloor + rules.holdIncrement > rules.holdCeiling) {
+    ctx.addIssue({ code: 'custom', path: ['holdFloor'], message: 'Hold floor plus increment must not exceed the hold ceiling' });
+  }
 });
 export type AdjustmentRules = z.infer<typeof AdjustmentRulesSchema>;
 

@@ -1,6 +1,8 @@
 import { z } from 'zod';
+import { lastStep } from './catalog/progressions';
 import type { LocalDate } from './dates';
 import { DomainEventSchema, type DomainEvent } from './events';
+import type { ProgressionId, ProgressionLevel } from './primitives';
 import { AppSettingsSchema, type AppSettings } from './settings';
 
 export const BACKUP_APP = 'daily-calisthenics';
@@ -22,8 +24,28 @@ export function serializeBackup(settings: AppSettings, events: DomainEvent[], ex
   return JSON.stringify(backup, null, 2);
 }
 
+/** Problems the schema can't see: future days and Progression Steps missing from the catalog. */
+function semanticError(events: DomainEvent[], today: LocalDate): string | null {
+  const badStep = (progression: ProgressionId, level: ProgressionLevel) => level.step > lastStep(progression);
+  for (const [i, event] of events.entries()) {
+    const at = `Invalid backup at events.${i}`;
+    if (event.date > today) return `${at}.date: ${event.date} is in the future.`;
+    if (event.type === 'placementCompleted') {
+      for (const [progression, level] of Object.entries(event.levels) as [ProgressionId, ProgressionLevel][]) {
+        if (badStep(progression, level)) return `${at}.levels.${progression}.step: ${progression} has no step ${level.step}.`;
+      }
+    }
+    if (event.type === 'adjustmentAccepted') {
+      for (const key of ['from', 'to'] as const) {
+        if (badStep(event.progression, event[key])) return `${at}.${key}.step: ${event.progression} has no step ${event[key].step}.`;
+      }
+    }
+  }
+  return null;
+}
+
 /** Validates the whole file before returning anything, so an import is all-or-nothing. */
-export function parseBackup(text: string): ParseBackupResult {
+export function parseBackup(text: string, today: LocalDate): ParseBackupResult {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -40,6 +62,8 @@ export function parseBackup(text: string): ParseBackupResult {
     const issue = parsed.error.issues[0];
     return { ok: false, error: `Invalid backup at ${issue.path.map(String).join('.')}: ${issue.message}` };
   }
+  const error = semanticError(parsed.data.events, today);
+  if (error) return { ok: false, error };
   return { ok: true, backup: parsed.data };
 }
 

@@ -36,3 +36,11 @@ describe('DEFAULT_SETTINGS', () => {
     expect(AppSettingsSchema.parse(DEFAULT_SETTINGS)).toEqual(DEFAULT_SETTINGS);
   });
 });
+
+describe('AdjustmentRulesSchema', () => {
+  it('rejects rules that could produce a Target below the floor or under 1', () => {
+    expect(AppSettingsSchema.safeParse({ ...DEFAULT_SETTINGS, adjustments: { ...DEFAULT_SETTINGS.adjustments, repIncrement: 20 } }).success).toBe(false);
+    expect(AppSettingsSchema.safeParse({ ...DEFAULT_SETTINGS, adjustments: { ...DEFAULT_SETTINGS.adjustments, repFloor: 15 } }).success).toBe(false);
+    expect(AppSettingsSchema.safeParse({ ...DEFAULT_SETTINGS, adjustments: { ...DEFAULT_SETTINGS.adjustments, holdFloor: 58 } }).success).toBe(false);
+  });
+});
