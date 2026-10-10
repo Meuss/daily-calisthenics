@@ -6,6 +6,7 @@ import {
   hasPlacement,
   placementEvents,
   settingsChangeEvents,
+  validateSettings,
   weighInDeletedEvent,
   weighInEvent,
 } from './commands';
@@ -74,5 +75,16 @@ describe('adjustmentDecisionEvent', () => {
     expect(adjustmentDecisionEvent(adjustment, false, now)).toEqual({
       type: 'adjustmentDismissed', at: now.toISOString(), date: '2026-10-10', progression: 'push',
     });
+  });
+});
+
+describe('validateSettings', () => {
+  it('accepts the defaults', () => {
+    expect(validateSettings(DEFAULT_SETTINGS)).toBeNull();
+  });
+
+  it('explains why Adjustment rules that could break Targets are refused', () => {
+    const next = { ...DEFAULT_SETTINGS, adjustments: { ...DEFAULT_SETTINGS.adjustments, repFloor: 11 } };
+    expect(validateSettings(next)).toBe('Rep floor plus increment must not exceed the rep ceiling');
   });
 });

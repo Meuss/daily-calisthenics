@@ -1,4 +1,5 @@
 import {
+  AppSettingsSchema,
   placementLevels,
   roundKg,
   toLocalDate,
@@ -51,4 +52,10 @@ export function adjustmentDecisionEvent(adjustment: Adjustment, accept: boolean,
   return accept
     ? { type: 'adjustmentAccepted', at, date, progression: adjustment.progression, from: adjustment.from, to: adjustment.to }
     : { type: 'adjustmentDismissed', at, date, progression: adjustment.progression };
+}
+
+/** A readable reason the settings can't be saved, or null when they are valid. */
+export function validateSettings(next: AppSettings): string | null {
+  const result = AppSettingsSchema.safeParse(next);
+  return result.success ? null : (result.error.issues[0]?.message ?? 'These settings are not valid.');
 }
