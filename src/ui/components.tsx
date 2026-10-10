@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
   body: { color: colors.text, fontSize: font.body, lineHeight: 22 },
   muted: { color: colors.textMuted, fontSize: font.small },
   card: { backgroundColor: colors.surface, borderRadius: radius.md, padding: space.md, gap: space.sm, borderWidth: 1, borderColor: colors.border },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.sm },
   button: { paddingVertical: 14, paddingHorizontal: space.md, borderRadius: radius.sm, alignItems: 'center' },
   primary: { backgroundColor: colors.accent },
   secondary: { backgroundColor: colors.surfaceRaised },

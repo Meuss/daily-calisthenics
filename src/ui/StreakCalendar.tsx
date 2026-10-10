@@ -41,7 +41,7 @@ function Legend({ color, label }: { color: string; label: string }) {
   return (
     <View style={styles.legendItem}>
       <View style={[styles.swatch, { backgroundColor: color }]} />
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.legendLabel}>{label}</Text>
     </View>
   );
 }
@@ -54,5 +54,6 @@ const styles = StyleSheet.create({
   today: { borderWidth: 2, borderColor: colors.text },
   legend: { flexDirection: 'row', gap: space.md, marginTop: space.sm },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  legendLabel: { color: colors.textMuted, fontSize: font.small },
   swatch: { width: 12, height: 12, borderRadius: 3 },
 });
