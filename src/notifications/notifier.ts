@@ -1,9 +1,16 @@
-import * as Notifications from 'expo-notifications';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+import type * as NotificationsModule from 'expo-notifications';
 import type { ScheduledReminder } from './schedule';
 
 const CHANNEL_ID = 'reminders';
 
-Notifications.setNotificationHandler({
+// Expo Go (SDK 53+) throws on Android as soon as expo-notifications is imported, so Reminders only exist in a real build.
+const Notifications: typeof NotificationsModule | null =
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient ? null : require('expo-notifications');
+
+export const remindersAvailable = Notifications !== null;
+
+Notifications?.setNotificationHandler({
   handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
 });
 
@@ -12,13 +19,14 @@ let latestPlan: ScheduledReminder[] | undefined;
 /** Serializes syncs so a cancelAll from one run never interleaves with another run's schedule loop. */
 let chain: Promise<void> = Promise.resolve();
 
-async function ensureChannel(): Promise<void> {
+async function ensureChannel(Notifications: typeof NotificationsModule): Promise<void> {
   await Notifications.setNotificationChannelAsync(CHANNEL_ID, { name: 'Reminders', importance: Notifications.AndroidImportance.HIGH });
 }
 
 /** Android 13+ only shows the permission prompt once a channel exists. Re-syncs the latest plan once granted. */
 export async function ensureNotificationPermission(): Promise<boolean> {
-  await ensureChannel();
+  if (!Notifications) return false;
+  await ensureChannel(Notifications);
   const current = await Notifications.getPermissionsAsync();
   const granted = current.granted || (await Notifications.requestPermissionsAsync()).granted;
   if (granted && latestPlan) {
@@ -28,9 +36,10 @@ export async function ensureNotificationPermission(): Promise<boolean> {
 }
 
 async function replaceScheduled(plan: ScheduledReminder[]): Promise<void> {
+  if (!Notifications) return;
   const permission = await Notifications.getPermissionsAsync();
   if (!permission.granted) return;
-  await ensureChannel();
+  await ensureChannel(Notifications);
   await Notifications.cancelAllScheduledNotificationsAsync();
   for (const reminder of plan) {
     await Notifications.scheduleNotificationAsync({
