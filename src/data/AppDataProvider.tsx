@@ -8,6 +8,8 @@ import type { KeyValueStore } from './kvStore';
 import { loadSettings, saveSettings } from './settingsStore';
 import { createSqliteEventStore } from './sqliteEventStore';
 import { sqliteKeyValueStore } from './sqliteKv';
+import { syncReminders } from '../notifications/notifier';
+import { reminderPlan } from '../notifications/schedule';
 
 export type AppData = {
   events: DomainEvent[];
@@ -48,6 +50,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       clearInterval(timer);
     };
   }, []);
+
+  const doneToday = useMemo(() => events.some((e) => e.type === 'sessionFinished' && e.date === today), [events, today]);
+
+  // Re-plan Reminders on launch, at midnight, after a Session and when Reminder settings change.
+  useEffect(() => {
+    syncReminders(reminderPlan(settings.reminder, doneToday, new Date())).catch((error) => console.warn('Could not schedule Reminders', error));
+  }, [settings.reminder, doneToday, today]);
 
   const append = useCallback(
     (newEvents: DomainEvent[]) => {

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ROTATION, ROUTINES, type PlankAnswer, type PushUpAnswer, type RotationRoutineId, type SquatAnswer } from '../domain';
 import { useAppData } from '../data/AppDataProvider';
 import { hasPlacement, placementEvents } from '../data/commands';
+import { ensureNotificationPermission } from '../notifications/notifier';
 import { Body, Button, Card, Choice, Muted, Row, Screen, Stepper, Title } from '../ui/components';
 import { fromMinutes, toMinutes } from '../ui/format';
 
@@ -36,6 +37,7 @@ export default function PlacementScreen() {
     if (!pushUps || !squats || !plank) return;
     append(placementEvents({ pushUps, squats, plank }, rotationStart, settings, new Date()));
     updateSettings({ ...settings, reminder: { ...settings.reminder, time: reminderTime } });
+    void ensureNotificationPermission();
     router.replace('/');
   };
 
