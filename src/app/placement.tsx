@@ -37,7 +37,7 @@ export default function PlacementScreen() {
     if (!pushUps || !squats || !plank) return;
     append(placementEvents({ pushUps, squats, plank }, rotationStart, settings, new Date()));
     updateSettings({ ...settings, reminder: { ...settings.reminder, time: reminderTime } });
-    void ensureNotificationPermission();
+    ensureNotificationPermission().catch((error) => console.warn('Could not request notification permission', error));
     router.replace('/');
   };
 
