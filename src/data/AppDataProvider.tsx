@@ -1,5 +1,5 @@
 import { openDatabaseSync } from 'expo-sqlite';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
 import { toLocalDate, type AppSettings, type DomainEvent, type LocalDate } from '../domain';
 import { settingsChangeEvents } from './commands';
@@ -32,6 +32,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const { events: eventStore, kv } = getStores();
   const [events, setEvents] = useState(() => eventStore.all());
   const [settings, setSettings] = useState(() => loadSettings(kv));
+  // Latest settings, readable before a re-render, so back-to-back updates diff against the current base.
+  const settingsRef = useRef(settings);
   const [today, setToday] = useState(() => toLocalDate(new Date()));
 
   // "Today" rolls over at local midnight, and when the app comes back to the foreground.
@@ -58,17 +60,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const updateSettings = useCallback(
     (next: AppSettings) => {
-      append(settingsChangeEvents(settings, next, new Date()));
+      append(settingsChangeEvents(settingsRef.current, next, new Date()));
       saveSettings(kv, next);
+      settingsRef.current = next;
       setSettings(next);
     },
-    [append, kv, settings],
+    [append, kv],
   );
 
   const replaceAll = useCallback(
     (nextEvents: DomainEvent[], nextSettings: AppSettings) => {
       eventStore.replaceAll(nextEvents);
       saveSettings(kv, nextSettings);
+      settingsRef.current = nextSettings;
       setEvents(eventStore.all());
       setSettings(nextSettings);
     },
