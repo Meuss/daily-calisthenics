@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS, placementLevels, type PlanStep } from '../domain';
 import { placement, rating, session } from '../domain/testing/builders';
-import { describeAdjustment, finishEvents, sessionOutcome } from './finish';
+import { describeAdjustment, ratingEvents, sessionFinishedEvent, sessionOutcome } from './finish';
 import { currentStep, playerReducer, startPlayer, type PlayerState } from './player';
 
 const levels = placementLevels({ pushUps: '1-5', squats: '10-25', plank: '20-45' });
@@ -15,29 +15,37 @@ function play(state: PlayerState, skipPush = false): PlayerState {
   return s;
 }
 
-describe('finishEvents', () => {
-  it('records the Session and one Rating per Exercise, defaulting to ok', () => {
+describe('sessionFinishedEvent', () => {
+  it('records the Session with its routine and no skips', () => {
     const state = play(startPlayer('A', levels, DEFAULT_SETTINGS.session, '2026-10-10'));
-    const events = finishEvents(state, { push: 'tooEasy' }, new Date(2026, 9, 10, 7, 45));
-    expect(events[0]).toMatchObject({ type: 'sessionFinished', date: '2026-10-10', routineId: 'A', skipped: [] });
-    expect(events.slice(1)).toMatchObject([
-      { type: 'ratingGiven', progression: 'push', exerciseId: 'knee-push-up', rating: 'tooEasy' },
+    expect(sessionFinishedEvent(state, new Date(2026, 9, 10, 7, 45))).toMatchObject({ type: 'sessionFinished', date: '2026-10-10', routineId: 'A', skipped: [] });
+  });
+
+  it('dates a Session that crossed midnight on the day it was finished', () => {
+    const state = play(startPlayer('short', levels, DEFAULT_SETTINGS.session, '2026-10-09'));
+    expect(sessionFinishedEvent(state, new Date(2026, 9, 10, 0, 3))).toMatchObject({ date: '2026-10-10' });
+  });
+
+  it('logs skipped Slots', () => {
+    const state = play(startPlayer('A', levels, DEFAULT_SETTINGS.session, '2026-10-10'), true);
+    expect(sessionFinishedEvent(state, new Date(2026, 9, 10, 7, 45))).toMatchObject({ skipped: ['push'] });
+  });
+});
+
+describe('ratingEvents', () => {
+  it('gives one Rating per Exercise, defaulting to ok', () => {
+    const state = play(startPlayer('A', levels, DEFAULT_SETTINGS.session, '2026-10-10'));
+    expect(ratingEvents(state, { push: 'tooEasy' }, new Date(2026, 9, 10, 7, 45))).toMatchObject([
+      { type: 'ratingGiven', date: '2026-10-10', progression: 'push', exerciseId: 'knee-push-up', rating: 'tooEasy' },
       { type: 'ratingGiven', progression: 'squat', rating: 'ok' },
       { type: 'ratingGiven', progression: 'coreHold', rating: 'ok' },
       { type: 'ratingGiven', progression: 'back', rating: 'ok' },
     ]);
   });
 
-  it('dates a Session that crossed midnight on the day it was finished', () => {
-    const state = play(startPlayer('short', levels, DEFAULT_SETTINGS.session, '2026-10-09'));
-    expect(finishEvents(state, {}, new Date(2026, 9, 10, 0, 3))[0]).toMatchObject({ date: '2026-10-10' });
-  });
-
-  it('logs skipped Slots and does not rate a Slot skipped in every Round', () => {
+  it('does not rate a Slot skipped in every Round', () => {
     const state = play(startPlayer('A', levels, DEFAULT_SETTINGS.session, '2026-10-10'), true);
-    const events = finishEvents(state, {}, new Date(2026, 9, 10, 7, 45));
-    expect(events[0]).toMatchObject({ skipped: ['push'] });
-    expect(events.flatMap((e) => (e.type === 'ratingGiven' ? [e.progression] : []))).toEqual(['squat', 'coreHold', 'back']);
+    expect(ratingEvents(state, {}, new Date(2026, 9, 10, 7, 45)).map((e) => (e.type === 'ratingGiven' ? e.progression : null))).toEqual(['squat', 'coreHold', 'back']);
   });
 });
 

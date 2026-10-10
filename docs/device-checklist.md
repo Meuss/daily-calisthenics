@@ -14,6 +14,9 @@ Run through this on a real Android phone (Expo Go or an installed APK). There is
 - [ ] Stop → "Do the Short Routine instead" starts a 1-Round Session without Warm-up; "Stop and go back" does not count.
 - [ ] Finish → Ratings (default OK) → summary shows the Streak; after two "Too easy" in a row, an Adjustment is suggested; Accept updates the Target on Progress.
 - [ ] Weigh-in prompt appears after the Session when none was logged today.
+- [ ] Music or a podcast keeps playing (ducked) during beeps.
+- [ ] After Done, Android back from Today exits the app (no second Today).
+- [ ] Swipe the app away on the Ratings screen, reopen → the day still counts in the Streak.
 
 ## Today, Progress, Achievements
 - [ ] After a Session, Today shows "Done for today" and the next Routine is the next in the Rotation.

@@ -1,6 +1,6 @@
 # Daily Calisthenics
 
-**A 12-minute bodyweight routine every morning — no equipment, no account, no excuses.**
+**A 12-minute bodyweight routine every morning — no gym, no account, no excuses.**
 
 Daily Calisthenics is a small, free Android app that tells you exactly what to do each morning: a short guided circuit with simple illustrations, reps or a timer for every move, and a Streak that forgives the occasional bad day.
 

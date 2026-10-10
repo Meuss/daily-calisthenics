@@ -1,5 +1,5 @@
-import { useAudioPlayer } from 'expo-audio';
-import { useCallback } from 'react';
+import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
+import { useCallback, useEffect } from 'react';
 import { Vibration } from 'react-native';
 import type { SessionSettings } from '../domain';
 import type { Cue } from './cues';
@@ -12,6 +12,11 @@ const VIBRATION: Record<Cue, number | number[]> = {
 
 export function useCues(mode: SessionSettings['cue']): (cue: Cue | null) => void {
   const beep = useAudioPlayer(require('../../assets/sounds/beep.wav'));
+
+  useEffect(() => {
+    // Without this every beep takes transient audio focus and pauses the user's music.
+    setAudioModeAsync({ interruptionMode: 'duckOthers' }).catch((error) => console.warn('Could not set audio mode', error));
+  }, []);
 
   return useCallback(
     (cue: Cue | null) => {

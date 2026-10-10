@@ -16,21 +16,23 @@ import {
 import { formatTarget } from '../ui/format';
 import { ratableExercises, skippedProgressions, type PlayerState } from './player';
 
-/** A Session counts for the day it is finished on. */
-export function finishEvents(state: PlayerState, ratings: Partial<Record<ProgressionId, Rating>>, now: Date): DomainEvent[] {
+/** A Session counts for the day it is finished on; written as soon as the end is reached. */
+export function sessionFinishedEvent(state: PlayerState, now: Date): DomainEvent {
+  return { type: 'sessionFinished', at: now.toISOString(), date: toLocalDate(now), routineId: state.routineId, skipped: skippedProgressions(state) };
+}
+
+/** One Rating per rated Exercise, defaulting to ok. */
+export function ratingEvents(state: PlayerState, ratings: Partial<Record<ProgressionId, Rating>>, now: Date): DomainEvent[] {
   const at = now.toISOString();
   const date = toLocalDate(now);
-  return [
-    { type: 'sessionFinished', at, date, routineId: state.routineId, skipped: skippedProgressions(state) },
-    ...ratableExercises(state).map(({ progression, exerciseId }): DomainEvent => ({
-      type: 'ratingGiven',
-      at,
-      date,
-      progression,
-      exerciseId,
-      rating: ratings[progression] ?? 'ok',
-    })),
-  ];
+  return ratableExercises(state).map(({ progression, exerciseId }): DomainEvent => ({
+    type: 'ratingGiven',
+    at,
+    date,
+    progression,
+    exerciseId,
+    rating: ratings[progression] ?? 'ok',
+  }));
 }
 
 export type SessionOutcome = { streak: number; newAchievements: AchievementDef[]; adjustments: Adjustment[] };

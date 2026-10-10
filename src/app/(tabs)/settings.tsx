@@ -18,27 +18,32 @@ const CUES: { value: AppSettings['session']['cue']; label: string }[] = [
   { value: 'none', label: 'Silent' },
 ];
 
+type SettingsGroup = 'reminder' | 'freeze' | 'adjustments' | 'session' | 'weighIn';
+
 const seconds = (value: number) => `${value} s`;
 
 export default function SettingsScreen() {
   const { events, settings, today, kv, updateSettings, replaceAll } = useAppData();
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ group: SettingsGroup; text: string } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const change = (next: AppSettings) => {
+  const change = (next: AppSettings, group: SettingsGroup) => {
     const problem = validateSettings(next);
-    setError(problem);
+    setError(problem ? { group, text: problem } : null);
     if (!problem) updateSettings(next);
   };
   const reminder = (patch: Partial<AppSettings['reminder']>) => {
-    change({ ...settings, reminder: { ...settings.reminder, ...patch } });
-    if (patch.enabled || patch.nudgeEnabled) void ensureNotificationPermission();
+    change({ ...settings, reminder: { ...settings.reminder, ...patch } }, 'reminder');
+    if (patch.enabled || patch.nudgeEnabled) {
+      ensureNotificationPermission().catch((e) => console.warn('Could not request notification permission', e));
+    }
   };
-  const freeze = (patch: Partial<AppSettings['freeze']>) => change({ ...settings, freeze: { ...settings.freeze, ...patch } });
-  const adjustments = (patch: Partial<AppSettings['adjustments']>) => change({ ...settings, adjustments: { ...settings.adjustments, ...patch } });
-  const session = (patch: Partial<AppSettings['session']>) => change({ ...settings, session: { ...settings.session, ...patch } });
+  const freeze = (patch: Partial<AppSettings['freeze']>) => change({ ...settings, freeze: { ...settings.freeze, ...patch } }, 'freeze');
+  const adjustments = (patch: Partial<AppSettings['adjustments']>) => change({ ...settings, adjustments: { ...settings.adjustments, ...patch } }, 'adjustments');
+  const session = (patch: Partial<AppSettings['session']>) => change({ ...settings, session: { ...settings.session, ...patch } }, 'session');
 
   const exportBackup = async () => {
+    setMessage(null);
     try {
       await shareBackup(backupFileName(today), serializeBackup(settings, events, new Date()));
     } catch (e) {
@@ -47,6 +52,7 @@ export default function SettingsScreen() {
   };
 
   const importBackup = async () => {
+    setMessage(null);
     let text: string | null;
     try {
       text = await pickBackupText();
@@ -75,6 +81,7 @@ export default function SettingsScreen() {
   };
 
   const resetAll = () => {
+    setMessage(null);
     Alert.alert('Reset all data?', 'This deletes every Session, Weigh-in and Achievement. Export a backup first if you want to keep them.', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -83,6 +90,7 @@ export default function SettingsScreen() {
         onPress: () => {
           replaceAll([], DEFAULT_SETTINGS);
           saveSnapshot(kv, null);
+          setMessage('All data reset.');
         },
       },
     ]);
@@ -91,10 +99,10 @@ export default function SettingsScreen() {
   return (
     <Screen>
       <Title>Settings</Title>
-      {error && <Text style={styles.error}>{error}</Text>}
 
       <Card>
         <Muted>Reminders</Muted>
+        {error?.group === 'reminder' && <Text style={styles.error}>{error.text}</Text>}
         <SwitchRow label="Morning Reminder" value={settings.reminder.enabled} onChange={(enabled) => reminder({ enabled })} />
         <Stepper label="Time" value={toMinutes(settings.reminder.time)} min={0} max={1425} step={15} format={fromMinutes} onChange={(m) => reminder({ time: fromMinutes(m) })} />
         <SwitchRow label="Nudge if not done yet" value={settings.reminder.nudgeEnabled} onChange={(nudgeEnabled) => reminder({ nudgeEnabled })} />
@@ -103,6 +111,7 @@ export default function SettingsScreen() {
 
       <Card>
         <Muted>Freezes</Muted>
+        {error?.group === 'freeze' && <Text style={styles.error}>{error.text}</Text>}
         <SwitchRow label="Use Freezes" value={settings.freeze.enabled} onChange={(enabled) => freeze({ enabled })} />
         <Stepper label="Per week" value={settings.freeze.perWeek} min={0} max={7} onChange={(perWeek) => freeze({ perWeek })} />
         <Stepper label="Max saved" value={settings.freeze.maxBanked} min={0} max={7} onChange={(maxBanked) => freeze({ maxBanked })} />
@@ -111,6 +120,7 @@ export default function SettingsScreen() {
 
       <Card>
         <Muted>Adjustments</Muted>
+        {error?.group === 'adjustments' && <Text style={styles.error}>{error.text}</Text>}
         <SwitchRow label="Suggest Adjustments" value={settings.adjustments.enabled} onChange={(enabled) => adjustments({ enabled })} />
         <Stepper label="Same Rating in a row" value={settings.adjustments.ratingsInARow} min={1} max={10} onChange={(ratingsInARow) => adjustments({ ratingsInARow })} />
         <Stepper label="Reps step" value={settings.adjustments.repIncrement} min={1} max={10} onChange={(repIncrement) => adjustments({ repIncrement })} />
@@ -123,6 +133,7 @@ export default function SettingsScreen() {
 
       <Card>
         <Muted>Session</Muted>
+        {error?.group === 'session' && <Text style={styles.error}>{error.text}</Text>}
         <Stepper label="Rest between Exercises" value={settings.session.restSeconds} min={0} max={300} step={5} format={seconds} onChange={(restSeconds) => session({ restSeconds })} />
         <Stepper label="Rest between Rounds" value={settings.session.roundRestSeconds} min={0} max={600} step={15} format={seconds} onChange={(roundRestSeconds) => session({ roundRestSeconds })} />
         <SwitchRow label="Warm-up" value={settings.session.warmupEnabled} onChange={(warmupEnabled) => session({ warmupEnabled })} />
@@ -132,7 +143,8 @@ export default function SettingsScreen() {
 
       <Card>
         <Muted>Weigh-in</Muted>
-        <SwitchRow label="Ask after each Session" value={settings.weighInPromptAfterSession} onChange={(weighInPromptAfterSession) => change({ ...settings, weighInPromptAfterSession })} />
+        {error?.group === 'weighIn' && <Text style={styles.error}>{error.text}</Text>}
+        <SwitchRow label="Ask after each Session" value={settings.weighInPromptAfterSession} onChange={(weighInPromptAfterSession) => change({ ...settings, weighInPromptAfterSession }, 'weighIn')} />
       </Card>
 
       <Card>

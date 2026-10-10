@@ -9,6 +9,7 @@ import {
   deriveWeighIns,
   nextRoutineId,
   type Adjustment,
+  type DomainEvent,
   type ProgressionId,
   type Rating,
   type RoutineId,
@@ -16,7 +17,7 @@ import {
 import { useAppData } from '../data/AppDataProvider';
 import { adjustmentDecisionEvent } from '../data/commands';
 import { cueFor } from '../session/cues';
-import { describeAdjustment, finishEvents, sessionOutcome, type SessionOutcome } from '../session/finish';
+import { describeAdjustment, ratingEvents, sessionFinishedEvent, sessionOutcome, type SessionOutcome } from '../session/finish';
 import {
   currentStep,
   loadResumable,
@@ -64,6 +65,10 @@ export default function SessionScreen() {
   const cue = useCues(settings.session.cue);
   const previous = useRef(state);
   const finishing = useRef(false);
+  const sessionRecorded = useRef(false);
+  const preSession = useRef<{ events: DomainEvent[]; finished: DomainEvent } | null>(null);
+  const eventsRef = useRef(events);
+  eventsRef.current = events;
   const decidedRef = useRef<Set<ProgressionId>>(new Set());
 
   useEffect(() => {
@@ -76,8 +81,16 @@ export default function SessionScreen() {
     if (before === state) return;
     cue(cueFor(before, state));
     if (before.index !== state.index || before.paused !== state.paused || before.routineId !== state.routineId) saveSnapshot(kv, state);
-    if (state.finished && !before.finished) setPhase('rating');
-  }, [state, cue, kv]);
+    if (state.finished && !before.finished) {
+      setPhase('rating');
+      if (!sessionRecorded.current) {
+        sessionRecorded.current = true;
+        const finished = sessionFinishedEvent(state, new Date());
+        preSession.current = { events: eventsRef.current, finished };
+        append([finished]);
+      }
+    }
+  }, [state, cue, kv, append]);
 
   const timed = state.remaining !== null;
   useEffect(() => {
@@ -93,7 +106,7 @@ export default function SessionScreen() {
 
   const abandon = () => {
     saveSnapshot(kv, null);
-    router.replace('/');
+    router.dismissTo('/');
   };
 
   const startShort = () => {
@@ -105,8 +118,9 @@ export default function SessionScreen() {
     if (finishing.current) return;
     finishing.current = true;
     const now = new Date();
-    const added = finishEvents(state, ratings, now);
-    setOutcome(sessionOutcome(events, added, settings, now));
+    const recorded = preSession.current;
+    const added = ratingEvents(state, ratings, now);
+    if (recorded) setOutcome(sessionOutcome(recorded.events, [recorded.finished, ...added], settings, now));
     append(added);
     saveSnapshot(kv, null);
     setPhase('summary');
@@ -204,7 +218,7 @@ export default function SessionScreen() {
         {settings.weighInPromptAfterSession && !weighedToday && (
           <Button label="Log today's weight" variant="secondary" onPress={() => router.push('/weigh-in')} />
         )}
-        <Button label="Done" onPress={() => router.replace('/')} />
+        <Button label="Done" onPress={() => router.dismissTo('/')} />
       </Screen>
     );
   }
