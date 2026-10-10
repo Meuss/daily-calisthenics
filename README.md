@@ -1,16 +1,41 @@
 # Daily Calisthenics
 
-A small Android app for a ~12-minute bodyweight routine every morning, a daily Weigh-in, and a Streak that forgives the occasional bad day. All data stays on your phone.
+**A 12-minute bodyweight routine every morning — no equipment, no account, no excuses.**
 
-- Vocabulary: [`CONTEXT.md`](CONTEXT.md)
-- Design: [`docs/superpowers/specs/2026-10-10-daily-calisthenics-design.md`](docs/superpowers/specs/2026-10-10-daily-calisthenics-design.md)
+Daily Calisthenics is a small, free Android app that tells you exactly what to do each morning: a short guided circuit with simple illustrations, reps or a timer for every move, and a Streak that forgives the occasional bad day.
+
+<!-- screenshots -->
+
+## Features
+
+- **Guided Sessions**: Warm-up, then 3 Rounds of 4 Exercises with countdowns, beeps and vibration. About 12 minutes.
+- **Starts where you are**: three questions place you on each Progression (wall push-ups to diamond push-ups, and more). Floor and a chair are all you need.
+- **Gets harder as you do**: rate each Exercise *too easy / OK / too hard* and the app suggests more reps or the next Step.
+- **Bad day? Short Routine**: a 3-minute version still keeps your Streak alive, and a weekly Freeze covers a missed day.
+- **Weigh-ins**: one tap after your Session, with a 7-day average chart.
+- **Achievements and Reminders** to keep you coming back.
+- **Private**: everything stays on your phone. Export a backup file whenever you like.
+
+## Install
+
+Daily Calisthenics isn't on the Play Store. To try it today:
+
+1. Install **Expo Go for SDK 57** on your Android phone (linked from https://expo.dev/go).
+2. On a computer with Node.js and pnpm: `git clone https://github.com/Meuss/daily-calisthenics && cd daily-calisthenics && pnpm install && pnpm start`
+3. Scan the QR code with Expo Go (same Wi-Fi, or `pnpm start --tunnel`).
+
+A downloadable APK on the [Releases](https://github.com/Meuss/daily-calisthenics/releases) page is planned.
 
 ## Development
 
-    npm install
-    npm test          # domain unit tests
-    npm run typecheck
+    pnpm install
+    pnpm test           # unit tests (domain rules and app logic)
+    pnpm typecheck
+    pnpm check:bundle   # builds the Android JS bundle
+
+- Vocabulary: [`CONTEXT.md`](CONTEXT.md) · Design: [`docs/superpowers/specs/2026-10-10-daily-calisthenics-design.md`](docs/superpowers/specs/2026-10-10-daily-calisthenics-design.md)
+- Manual test pass on a phone: [`docs/device-checklist.md`](docs/device-checklist.md)
 
 ## License
 
-MIT
+[MIT](LICENSE)
