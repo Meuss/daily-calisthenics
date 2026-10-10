@@ -12,6 +12,11 @@ A personal Android app that guides one person through a ~12-minute bodyweight Ro
 - Display name **Daily Calisthenics**, package id `com.meuss.calisthenics`.
 - Public repo on GitHub (user `Meuss`), MIT license.
 - A GitHub Action builds a signed APK on each version tag and attaches it to a GitHub Release.
+  - Built entirely on GitHub's runners (`expo prebuild` + Gradle); no Expo/EAS account.
+  - Signed with a release key generated once; the workflow reads it from GitHub secrets, and its only backup is the owner's password manager (losing it means updates can't install over the old app).
+  - versionName/versionCode come from the tag (`v1.2.3`), so every release installs over the previous one.
+  - A manual run builds a test APK as a workflow artifact without publishing a Release.
+- Custom app icon drawn in code (dark background, green stick figure), rendered to every Android size.
 - v1: **dark theme only, English only, kg only.**
 
 ## Training
