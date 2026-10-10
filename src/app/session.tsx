@@ -1,13 +1,14 @@
 import { useKeepAwake } from 'expo-keep-awake';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useReducer, useRef, useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { BackHandler, StyleSheet, Text } from 'react-native';
 import {
   EXERCISES,
   ROUTINES,
   deriveLevels,
   deriveWeighIns,
   nextRoutineId,
+  type Adjustment,
   type ProgressionId,
   type Rating,
   type RoutineId,
@@ -62,6 +63,8 @@ export default function SessionScreen() {
   const [decided, setDecided] = useState<ProgressionId[]>([]);
   const cue = useCues(settings.session.cue);
   const previous = useRef(state);
+  const finishing = useRef(false);
+  const decidedRef = useRef<Set<ProgressionId>>(new Set());
 
   useEffect(() => {
     saveSnapshot(kv, initial);
@@ -99,6 +102,8 @@ export default function SessionScreen() {
   };
 
   const finish = () => {
+    if (finishing.current) return;
+    finishing.current = true;
     const now = new Date();
     const added = finishEvents(state, ratings, now);
     setOutcome(sessionOutcome(events, added, settings, now));
@@ -106,6 +111,31 @@ export default function SessionScreen() {
     saveSnapshot(kv, null);
     setPhase('summary');
   };
+
+  const decide = (adjustment: Adjustment, accepted: boolean) => {
+    if (decidedRef.current.has(adjustment.progression)) return;
+    decidedRef.current.add(adjustment.progression);
+    append([adjustmentDecisionEvent(adjustment, accepted, new Date())]);
+    setDecided((d) => (d.includes(adjustment.progression) ? d : [...d, adjustment.progression]));
+  };
+
+  const latest = useRef({ phase, finish, stop });
+  latest.current = { phase, finish, stop };
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      const { phase: p, finish: f, stop: st } = latest.current;
+      if (p === 'rating') { f(); return true; }
+      if (p === 'playing') { st(); return true; }
+      if (p === 'stopped') { dispatch({ type: 'resume' }); setPhase('playing'); return true; }
+      return false;
+    });
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => () => {
+    if (latest.current.phase === 'rating') latest.current.finish();
+  }, []);
 
   const routine = ROUTINES[state.routineId];
 
@@ -135,7 +165,7 @@ export default function SessionScreen() {
                   key={option.value}
                   label={option.label}
                   selected={(ratings[progression] ?? 'ok') === option.value}
-                  onPress={() => setRatings({ ...ratings, [progression]: option.value })}
+                  onPress={() => setRatings((r) => ({ ...r, [progression]: option.value }))}
                 />
               ))}
             </Row>
@@ -166,8 +196,8 @@ export default function SessionScreen() {
               <Muted>Suggested Adjustment</Muted>
               <Body>{describeAdjustment(adjustment)}</Body>
               <Row>
-                <Button label="Accept" onPress={() => { append([adjustmentDecisionEvent(adjustment, true, new Date())]); setDecided([...decided, adjustment.progression]); }} />
-                <Button label="Not now" variant="secondary" onPress={() => { append([adjustmentDecisionEvent(adjustment, false, new Date())]); setDecided([...decided, adjustment.progression]); }} />
+                <Button label="Accept" onPress={() => decide(adjustment, true)} />
+                <Button label="Not now" variant="secondary" onPress={() => decide(adjustment, false)} />
               </Row>
             </Card>
           ))}
