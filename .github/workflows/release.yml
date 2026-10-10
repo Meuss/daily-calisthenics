@@ -72,7 +72,7 @@ jobs:
           printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
           export RELEASE_STORE_FILE="$RUNNER_TEMP/release.keystore"
           cd android
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
           rm -f "$RELEASE_STORE_FILE"
 
       - name: Check it is signed with the release key
