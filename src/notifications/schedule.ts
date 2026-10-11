@@ -19,7 +19,7 @@ export function reminderPlan(reminder: ReminderSettings, doneToday: boolean, now
       hour: Math.floor(minutes / 60),
       minute: minutes % 60,
       title: 'Time to move',
-      body: 'Your 12-minute Routine is ready.',
+      body: "Today's Routine is ready.",
     });
   }
 
